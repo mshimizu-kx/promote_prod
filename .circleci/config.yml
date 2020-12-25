@@ -27,7 +27,7 @@ jobs:
       - persist_to_workspace:
           root: ~/
           paths:
-            - ~/logs/latest_deployment_ID.txt
+            - logs/latest_deployment_ID.txt
   promote_to_production:
     <<: *use_aws_docker
     steps:
