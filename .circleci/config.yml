@@ -19,6 +19,7 @@ jobs:
   get_last_deployment_id:
     <<: *use_aws_docker
     steps:
+      - run: apt-get install tar -y
       - run:
           command: |
             aws cloudformation list-exports \
