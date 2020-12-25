@@ -1,0 +1,58 @@
+version: 2.1
+
+use_aws_docker: &use_aws_docker
+  docker:
+    - image: amazon/aws-cli
+
+jobs:
+
+  create_and_deploy_front_end:
+    <<: *use_aws_docker
+    steps:
+      - checkout
+      - run:
+          command: |
+            aws cloudformation deploy \
+            --template-file bucket.yml \
+            --stack-name "${CIRCLE_WORKFLOW_ID:0:7}" \ # ${CIRCLE_WORKFLOW_ID:0:7} takes the first 7 chars of the variable CIRCLE_CI_WORKFLOW_ID
+            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID:0:7}"
+  get_last_deployment_id:
+    <<: *use_aws_docker
+    steps:
+      - run:
+          command: |
+            aws cloudformation list-exports \
+            --query "Exports[?Name==\`PipelineID\`].Value" \
+            --no-paginate --output text >> latest_deployment_ID.txt
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - ~/logs/latest_deployment_ID.txt
+  promote_to_production:
+    <<: *use_aws_docker
+    steps:
+      - run:
+          command: |
+            aws cloudformation deploy \
+            --template-file cloudfront.yml \
+            --stack-name production-distro \
+            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID}"
+  clean_up_old_front_end:
+    <<: *use_aws_docker
+    steps:
+      - attach_to_workspace:
+          at: ~/
+      - run: export OldPipelineID=$(cat ~/logs/latest_deployment_ID)
+      - run: aws s3 rm "s3://${OldPipelineID}" --recursive
+      - run: aws cloudformation delete-stack --stack-name "${OldPipelineID}"
+
+workflows:
+  create_and_update:
+    jobs:
+      - create_and_deploy_front_end
+      - get_last_deployment_id:
+          requires: create_and_deploy_front_end
+      - promote_to_production:
+          requires: get_last_deployment_id
+      - clean_up_old_front_end:
+          requires: promote_to_production
