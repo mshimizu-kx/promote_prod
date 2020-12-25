@@ -40,7 +40,7 @@ jobs:
   clean_up_old_front_end:
     <<: *use_aws_docker
     steps:
-      - attach_to_workspace:
+      - attach_workspace:
           at: ~/
       - run: export OldPipelineID=$(cat ~/logs/latest_deployment_ID)
       - run: aws s3 rm "s3://${OldPipelineID}" --recursive
