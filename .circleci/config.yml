@@ -15,7 +15,8 @@ jobs:
             aws cloudformation deploy \
             --template-file bucket.yml \
             --stack-name "${CIRCLE_WORKFLOW_ID:0:7}" \
-            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID:0:7}"
+            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID:0:7}" \
+            --region us-west-2
   get_last_deployment_id:
     <<: *use_aws_docker
     steps:
@@ -23,7 +24,8 @@ jobs:
           command: |
             aws cloudformation list-exports \
             --query "Exports[?Name==\`PipelineID\`].Value" \
-            --no-paginate --output text >> latest_deployment_ID.txt
+            --no-paginate --output text >> latest_deployment_ID.txt \
+            --region us-west-2
       - persist_to_workspace:
           root: ~/
           paths:
@@ -36,15 +38,16 @@ jobs:
             aws cloudformation deploy \
             --template-file cloudfront.yml \
             --stack-name production-distro \
-            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID}"
+            --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID}" \
+            --region us-west-2
   clean_up_old_front_end:
     <<: *use_aws_docker
     steps:
       - attach_workspace:
           at: ~/
       - run: export OldPipelineID=$(cat ~/logs/latest_deployment_ID)
-      - run: aws s3 rm "s3://${OldPipelineID}" --recursive
-      - run: aws cloudformation delete-stack --stack-name "${OldPipelineID}"
+      - run: aws s3 rm "s3://${OldPipelineID}" --recursive --region us-west-2
+      - run: aws cloudformation delete-stack --stack-name "${OldPipelineID}" --region us-west-2
 
 workflows:
   create_and_update:
