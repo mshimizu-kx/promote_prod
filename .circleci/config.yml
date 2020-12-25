@@ -14,7 +14,7 @@ jobs:
           command: |
             aws cloudformation deploy \
             --template-file bucket.yml \
-            --stack-name "${CIRCLE_WORKFLOW_ID:0:7}" \
+            --stack-name "prod-${CIRCLE_WORKFLOW_ID:0:7}" \
             --parameter-overrides PipelineID="${CIRCLE_WORKFLOW_ID:0:7}"
   get_last_deployment_id:
     <<: *use_aws_docker
@@ -44,7 +44,7 @@ jobs:
           at: ~/
       - run: export OldPipelineID=$(cat ~/logs/latest_deployment_ID)
       - run: aws s3 rm "s3://${OldPipelineID}" --recursive
-      - run: aws cloudformation delete-stack --stack-name "${OldPipelineID}"
+      - run: aws cloudformation delete-stack --stack-name "prod-${OldPipelineID}"
 
 workflows:
   create_and_update:
